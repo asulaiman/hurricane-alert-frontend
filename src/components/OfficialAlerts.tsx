@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { Coordinates } from '../lib/useGeolocation'
+import { apiUrl } from '../lib/api'
 
 interface OfficialAlert {
   source: 'NWS' | 'GDACS'
@@ -23,7 +24,7 @@ export function OfficialAlerts({ coords }: { coords: Coordinates }) {
     let cancelled = false
     setStatus('loading')
     const params = new URLSearchParams({ lat: String(coords.latitude), lon: String(coords.longitude) })
-    fetch(`/api/alerts?${params.toString()}`)
+    fetch(apiUrl(`/api/alerts?${params.toString()}`))
       .then((res) => {
         if (!res.ok) throw new Error(`request failed (${res.status})`)
         return res.json()

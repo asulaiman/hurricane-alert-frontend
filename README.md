@@ -8,6 +8,9 @@ trends — alongside real official alerts from the
 (US) and [GDACS](https://www.gdacs.org/) (global). Users can opt into browser
 push notifications or email alerts for a saved location.
 
+The API source and deployment configuration live in the separate
+[hurricane-alert-api](https://github.com/asulaiman/hurricane-alert-api) repository.
+
 Our own advisory thresholds (tropical-storm / hurricane-force wind, flash
 flood rainfall) are heuristics defined in this app, not official warnings —
 Open-Meteo has no hurricane-specific feed to source those from. The Official
@@ -22,52 +25,62 @@ volume requires a paid account plus A2P 10DLC registration. The schema
 
 ```sh
 npm install
-cp .env.local.example .env.local   # fill in DATABASE_URL at minimum, see below
-npm run migrate                     # applies scripts/schema.sql
+cp .env.local.example .env.local
 npm run dev
 ```
 
-`npm run dev` serves both the frontend and the `/api/*` routes (via a small
-Vite middleware in `api/_lib/devServer.ts`) — no Vercel CLI or account needed
-to develop locally. Open the printed local URL, click "Use My Location" or
-search for a city, and both the heuristic advisory and the Official Alerts
-section should populate.
+Run the API from its own repository in a second terminal. Its README covers
+database setup, migrations, and API environment variables. The frontend uses
+`VITE_API_BASE_URL` to call it; locally this should be `http://localhost:3001`.
 
 ## Environment variables
 
-See `.env.local.example` for the full list with explanations. Everything
-except `DATABASE_URL` can stay blank while developing — email sends and push
-sends log to the console instead of actually sending when their keys are unset.
+See `.env.local.example` for frontend settings. Set `VITE_API_BASE_URL` to the
+public API origin when deploying the frontend. The API repository documents
+database, email, push, deployment, and scheduled-check configuration.
 
-Accounts you'll need before alerting actually delivers to real people:
+## UI tests
 
-- **A Postgres database.** Anything works locally; in production use
-  [Neon](https://neon.tech) (free tier). Run `npm run migrate` against it once.
-- **[Resend](https://resend.com)** for email — free tier is 100/day, but you
-  must verify a sending domain (SPF/DKIM) first, or `RESEND_FROM` won't deliver.
-- **VAPID keys** for browser push — no account, just run:
-  ```sh
-  npx web-push generate-vapid-keys
-  ```
-  Put the public key in both `VAPID_PUBLIC_KEY` and `VITE_VAPID_PUBLIC_KEY`.
-- **[Vercel](https://vercel.com)** (or any host that runs the `/api/*.ts`
-  files as Node serverless functions) to deploy. Note: Vercel's Hobby plan
-  terms are scoped to non-commercial personal use — fine for development,
-  but budget for Pro if this gets real public traffic.
+```sh
+npm ci
+npm run test:e2e       # starts an isolated frontend and runs Cypress headlessly
+npm run test:e2e:open  # starts the same frontend and opens the Cypress runner
+```
 
-## Scheduled checks (cron)
+The test server uses port 5174, leaving the normal local preview on 5173 alone.
+`.env.test` contains public synthetic settings only. Cypress stubs weather,
+geocoding, and the separate API origin; no backend, database, email provider,
+or real push credentials are needed. Browser geolocation and push registration
+are also controlled by the tests.
 
-Vercel's Hobby plan caps Cron Jobs at once per day, which is useless for
-storm monitoring. Instead, `.github/workflows/check-subscriptions.yml` runs
-every 20 minutes and calls the deployed `/api/cron/check-subscriptions`
-endpoint. Once deployed, set these two repo secrets
-(Settings → Secrets and variables → Actions):
+Coverage includes search/selection and retry, geolocation success/denial,
+forecast loading and refresh after failure, advisory threshold boundaries,
+official warnings and supplementary empty/error states, consent/email
+validation, subscription success/server errors, and push registration/save
+success/failure. These tests validate UI behavior and request contracts, not
+real provider delivery or backend persistence.
 
-- `APP_BASE_URL` — your deployed URL
-- `CRON_SECRET` — must match the `CRON_SECRET` env var on the deployment
+## GitHub Actions failure alerts
 
-GitHub disables scheduled workflows on repos with no activity for a while —
-worth an occasional check that it's still running.
+`.github/workflows/ui-tests.yml` runs the build and UI/notification tests for
+pushes and pull requests. Failed tests—not successful or cancelled runs—invoke
+the Slack notifier with the service, repository, branch/ref, and failed-run
+link. Original test failures still fail the job; notification failures are
+reported explicitly.
+
+To enable delivery, an authorized Slack administrator must create an incoming
+webhook for **#hurricane-app-alerting** (channel `C0CDX2E5546`). Store its URL
+directly in this repository's **Settings > Secrets and variables > Actions**
+as `SLACK_WEBHOOK_URL`. Repeat secret setup in `asulaiman/hurricane-alert-api`.
+Do not paste webhook URLs into chat, commit them, or print them in logs.
+The webhook's channel is configured in Slack, not overridden by the workflow.
+Until the webhook and secrets exist, live delivery is unavailable; a failed
+trusted test run reports the missing configuration.
+
+Fork pull requests run tests without secrets and skip Slack notification;
+the workflow uses no `pull_request_target` or elevated permissions.
+`npm run test:notifications` validates failure, success, cancellation, safe
+metadata encoding, and notification errors without sending Slack messages.
 
 ## Compliance notes (read before public launch)
 

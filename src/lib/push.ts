@@ -1,3 +1,5 @@
+import { apiUrl } from './api'
+
 function urlBase64ToUint8Array(base64Url: string): Uint8Array {
   const padding = '='.repeat((4 - (base64Url.length % 4)) % 4)
   const base64 = (base64Url + padding).replace(/-/g, '+').replace(/_/g, '/')
@@ -27,7 +29,7 @@ export async function subscribeToPush(subscriptionId: number): Promise<void> {
     applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as BufferSource,
   })
 
-  const response = await fetch('/api/push/subscribe', {
+  const response = await fetch(apiUrl('/api/push/subscribe'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ subscriptionId, pushSubscription: pushSubscription.toJSON() }),

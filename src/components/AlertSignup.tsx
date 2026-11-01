@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Coordinates } from '../lib/useGeolocation'
 import { isPushSupported, subscribeToPush } from '../lib/push'
+import { apiUrl } from '../lib/api'
 
 const CONSENT_TEXT =
   "I want to receive storm advisories for this location by the channels selected below. " +
@@ -24,7 +25,7 @@ export function AlertSignup({ coords, locationLabel }: { coords: Coordinates; lo
     setMessage(null)
 
     try {
-      const response = await fetch('/api/subscribe', {
+      const response = await fetch(apiUrl('/api/subscribe'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

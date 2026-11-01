@@ -7,22 +7,22 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "migrate": "node --env-file=.env.local scripts/migrate.mjs"
+    "dev:test": "vite --mode test --host 127.0.0.1 --port 5174 --strictPort",
+    "test:notifications": "node --test scripts/notify-test-failure.test.mjs",
+    "test:e2e": "start-server-and-test dev:test http://127.0.0.1:5174 'cypress run'",
+    "test:e2e:open": "start-server-and-test dev:test http://127.0.0.1:5174 'cypress open'"
   },
   "dependencies": {
-    "pg": "^8.13.1",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "resend": "^4.0.1",
-    "web-push": "^3.6.7"
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
-    "@types/pg": "^8.11.10",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
-    "@types/web-push": "^3.6.4",
     "@vitejs/plugin-react": "^4.3.4",
+    "cypress": "^15.21.1",
+    "start-server-and-test": "^2.0.0",
     "typescript": "^5.6.3",
     "vite": "^5.4.11"
   }

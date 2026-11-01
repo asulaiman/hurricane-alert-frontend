@@ -1,0 +1,42 @@
+name: Frontend UI tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ui-tests:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Run UI and notification tests
+        id: tests
+        run: npm run test:notifications && npm run test:e2e
+      - name: Publish test failure to Slack
+        if: >-
+          ${{ failure() && !cancelled() && steps.tests.outcome == 'failure' &&
+              (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+        run: node scripts/notify-test-failure.mjs
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          TEST_SERVICE: Frontend
+          TEST_OUTCOME: ${{ steps.tests.outcome }}
+          TEST_CANCELLED: ${{ cancelled() }}
+          TEST_REF: ${{ github.head_ref || github.ref }}
+      - name: Upload Cypress failure screenshots
+        if: ${{ failure() && !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-failure-screenshots
+          path: cypress/screenshots
+          if-no-files-found: ignore
