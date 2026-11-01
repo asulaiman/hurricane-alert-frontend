@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useGeolocation, type Coordinates } from './lib/useGeolocation'
-import { fetchForecast, type ForecastResult, type GeocodingResult } from './lib/openMeteo'
-import { analyzeForecast } from './lib/advisory'
+import { fetchForecast, type ForecastResult } from './lib/weather'
+import type { GeocodingResult } from './lib/geocoding'
 import { AdvisoryBanner } from './components/AdvisoryBanner'
 import { ForecastDetails } from './components/ForecastDetails'
 import { LocationSearch } from './components/LocationSearch'
@@ -47,7 +47,7 @@ export default function App() {
     geo.setManualCoords({ latitude: result.latitude, longitude: result.longitude })
   }
 
-  const advisory = forecast ? analyzeForecast(forecast) : null
+  const advisory = forecast?.advisory
 
   return (
     <div className="app">

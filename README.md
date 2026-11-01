@@ -1,4 +1,4 @@
-# hurricane-alert
+# hurricane-alert-frontend
 
 Web app that uses your device's geolocation (or a manually searched location)
 to pull live forecast data from [Open-Meteo](https://open-meteo.com/) and
@@ -9,17 +9,32 @@ trends — alongside real official alerts from the
 push notifications or email alerts for a saved location.
 
 The API source and deployment configuration live in the separate
-[hurricane-alert-api](https://github.com/asulaiman/hurricane-alert-api) repository.
+[hurricane-alert-backend](https://github.com/asulaiman/hurricane-alert-backend) repository.
 
 Our own advisory thresholds (tropical-storm / hurricane-force wind, flash
-flood rainfall) are heuristics defined in this app, not official warnings —
+flood rainfall) are heuristics defined in the backend, not official warnings —
 Open-Meteo has no hurricane-specific feed to source those from. The Official
 Alerts section is the real NWS/GDACS data.
 
 SMS alerts are not implemented yet — Twilio has no workable free tier for
 texting people who aren't pre-verified numbers on your own account, and real
 volume requires a paid account plus A2P 10DLC registration. The schema
-(`subscribers.phone`, `channels.sms`) is already in place for when that's set up.
+(`subscribers.phone`, `channels.sms`) is in the backend for when that's set up.
+
+## Ownership and branch state
+
+The backend owns forecast fetching, advisory calculations, official alerts,
+subscriptions, database migrations, delivery, and scheduled checks. This repo
+owns location search, browser permissions/push registration, and presentation.
+`GET /api/forecast` returns `{ current, timezone, advisory }`; the frontend
+renders that result rather than keeping its own thresholds or weather parser.
+Local TypeScript response interfaces describe the HTTP boundary, not a shared
+source package or a dependency on the backend checkout.
+
+The original extraction is on `asulaiman-extract-hurricane-api`, not merged into
+frontend `main`. That default branch still contains the old combined app.
+This cleanup does not merge or rewrite it; the split branch must be reviewed
+and integrated separately to remove those old copies from the default branch.
 
 ## Run locally
 
@@ -54,7 +69,7 @@ or real push credentials are needed. Browser geolocation and push registration
 are also controlled by the tests.
 
 Coverage includes search/selection and retry, geolocation success/denial,
-forecast loading and refresh after failure, advisory threshold boundaries,
+forecast loading and refresh after failure, backend-provided advisory rendering,
 official warnings and supplementary empty/error states, consent/email
 validation, subscription success/server errors, and push registration/save
 success/failure. These tests validate UI behavior and request contracts, not
@@ -71,7 +86,7 @@ reported explicitly.
 To enable delivery, an authorized Slack administrator must create an incoming
 webhook for **#hurricane-app-alerting** (channel `C0CDX2E5546`). Store its URL
 directly in this repository's **Settings > Secrets and variables > Actions**
-as `SLACK_WEBHOOK_URL`. Repeat secret setup in `asulaiman/hurricane-alert-api`.
+as `SLACK_WEBHOOK_URL`. Repeat secret setup in `asulaiman/hurricane-alert-backend`.
 Do not paste webhook URLs into chat, commit them, or print them in logs.
 The webhook's channel is configured in Slack, not overridden by the workflow.
 Until the webhook and secrets exist, live delivery is unavailable; a failed

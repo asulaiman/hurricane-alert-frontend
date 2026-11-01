@@ -1,5 +1,4 @@
-import type { Advisory } from '../lib/advisory'
-import type { CurrentConditions } from '../lib/openMeteo'
+import type { Advisory, CurrentConditions } from '../lib/weather'
 
 function formatTime(iso: string, timezone: string) {
   try {

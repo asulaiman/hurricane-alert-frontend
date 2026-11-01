@@ -1,4 +1,4 @@
-const forecastUrl = 'https://api.open-meteo.com/v1/forecast*'
+const forecastUrl = 'http://127.0.0.1:3002/api/forecast*'
 const searchUrl = 'https://geocoding-api.open-meteo.com/v1/search*'
 const apiOrigin = 'http://127.0.0.1:3002'
 const miami = {
@@ -11,31 +11,33 @@ const miami = {
 }
 const locationLabel = 'Miami, Florida, United States'
 
-function forecast({ wind = 10, gust = 15, rain = 0, pastWind = 10 } = {}) {
-  const time = Array.from({ length: 51 }, (_, i) =>
-    new Date(Date.UTC(2026, 10, 1, i)).toISOString().slice(0, 16),
-  )
+function forecast({ wind = 10, gust = 15, rain = 0, advisory = {} } = {}) {
   return {
     timezone: 'UTC',
     current: {
-      time: time[3],
-      wind_speed_10m: wind,
-      wind_gusts_10m: gust,
+      time: '2026-11-01T03:00',
+      windSpeed: wind,
+      windGusts: gust,
       precipitation: 0,
-      surface_pressure: 1000,
+      surfacePressure: 1000,
     },
-    hourly: {
-      time,
-      wind_speed_10m: time.map((_, i) => (i < 3 ? pastWind : wind)),
-      wind_gusts_10m: time.map(() => gust),
-      precipitation: time.map((_, i) => (i >= 3 && i < 27 ? rain / 24 : 0)),
-      surface_pressure: time.map((_, i) => (i < 3 ? 1004 : 1000)),
+    advisory: {
+      level: 0,
+      label: 'No Advisory',
+      description: 'Pressure has dropped 4.0 hPa in the last 3 hours.',
+      color: '#2f9e44',
+      maxSustainedWind: { value: wind, time: '2026-11-01T03:00' },
+      maxGust: { value: gust, time: '2026-11-01T03:00' },
+      next24hPrecipitation: rain,
+      flashFloodRisk: false,
+      pressureDropLast3h: 4,
+      ...advisory,
     },
   }
 }
 
 function stubForecast(options = {}, responseOptions = {}) {
-  cy.intercept('GET', forecastUrl, { body: forecast(options), ...responseOptions }).as('forecast')
+  cy.intercept('GET', forecastUrl, { ...apiReply(forecast(options)), ...responseOptions }).as('forecast')
 }
 
 function apiReply(body, statusCode = 200, delay = 0) {
@@ -116,7 +118,6 @@ function emailSignup() {
 
 beforeEach(() => {
   cy.intercept('GET', searchUrl, { body: { results: [miami] } }).as('search')
-  stubForecast()
   // Unexpected routes fail locally rather than touching a database or delivery service.
   cy.intercept(`${apiOrigin}/api/**`, apiReply({ error: 'Unexpected API request' }, 500))
   cy.intercept('OPTIONS', `${apiOrigin}/api/**`, {
@@ -128,6 +129,7 @@ beforeEach(() => {
     },
   })
   cy.intercept('GET', `${apiOrigin}/api/alerts*`, apiReply({ alerts: [] })).as('alerts')
+  stubForecast()
 })
 
 describe('Location and forecast flows', () => {
@@ -144,12 +146,8 @@ describe('Location and forecast flows', () => {
     selectMiami()
     cy.get('@search').its('request.query.name').should('eq', 'Miami')
     cy.get('@forecast').its('request.query').should('include', {
-      latitude: '25.7617',
-      longitude: '-80.1918',
-      wind_speed_unit: 'mph',
-      precipitation_unit: 'inch',
-      forecast_hours: '48',
-      past_hours: '3',
+      lat: '25.7617',
+      lon: '-80.1918',
     })
     cy.wait('@alerts').its('request.query').should('include', { lat: '25.7617', lon: '-80.1918' })
     cy.contains('.current-location', locationLabel).should('be.visible')
@@ -207,7 +205,7 @@ describe('Location and forecast flows', () => {
   })
 
   it('shows forecast failure and retries through Refresh', () => {
-    cy.intercept('GET', forecastUrl, { statusCode: 503 }).as('forecast')
+    cy.intercept('GET', forecastUrl, apiReply({ error: 'Unavailable' }, 503)).as('forecast')
     visit()
     useLocation()
     cy.contains('Could not load forecast data. Try refreshing.').should('be.visible')
@@ -220,36 +218,34 @@ describe('Location and forecast flows', () => {
   })
 })
 
-describe('Forecast-based advisory thresholds', () => {
+describe('Backend-provided advisory presentation', () => {
   const cases = [
-    ['below strong wind', { wind: 24, gust: 38 }, 'No Advisory'],
-    ['at strong wind', { wind: 25 }, 'Strong Wind / Heavy Rain Advisory'],
-    ['at strong gust', { gust: 39 }, 'Strong Wind / Heavy Rain Advisory'],
-    ['below tropical storm', { wind: 38, gust: 57 }, 'Strong Wind / Heavy Rain Advisory'],
-    ['at tropical-storm wind', { wind: 39 }, 'Tropical-Storm-Force Conditions Advisory'],
-    ['at tropical-storm gust', { gust: 58 }, 'Tropical-Storm-Force Conditions Advisory'],
-    ['below hurricane', { wind: 73, gust: 99 }, 'Tropical-Storm-Force Conditions Advisory'],
-    ['at hurricane wind', { wind: 74 }, 'Hurricane-Force Conditions Advisory'],
-    ['at hurricane gust', { gust: 100 }, 'Hurricane-Force Conditions Advisory'],
-    ['below rainfall threshold', { rain: 2.9 }, 'No Advisory'],
-    ['at rainfall threshold', { rain: 3 }, 'Strong Wind / Heavy Rain Advisory'],
-    ['past hurricane wind is excluded', { pastWind: 100 }, 'No Advisory'],
+    [0, 'No Advisory', '#2f9e44'],
+    [1, 'Strong Wind / Heavy Rain Advisory', '#e8a400'],
+    [2, 'Tropical-Storm-Force Conditions Advisory', '#e8590c'],
+    [3, 'Hurricane-Force Conditions Advisory', '#c92a2a'],
   ]
 
-  for (const [name, options, label] of cases) {
-    it(name, () => {
-      stubForecast(options)
+  for (const [level, label, color] of cases) {
+    it(`renders backend advisory level ${level} without recalculating it`, () => {
+      stubForecast({ advisory: { level, label, color } })
       visit()
       useLocation()
       cy.get('.advisory-banner h2').should('have.text', label)
-      if (options.rain === 3) {
-        cy.contains('.flag', 'Flash flood risk').should('be.visible')
-        cy.contains('.advisory-banner', '3.0 in forecast over the next 24 hours').should('be.visible')
-      } else {
-        cy.get('.flag').should('not.exist')
-      }
+      cy.get('.flag').should('not.exist')
     })
   }
+
+  it('renders the backend flash flood flag and explanation', () => {
+    stubForecast({ rain: 3, advisory: {
+      level: 1, label: 'Strong Wind / Heavy Rain Advisory', flashFloodRisk: true,
+      description: 'Heavy rainfall risk: 3.0 in forecast over the next 24 hours.',
+    } })
+    visit()
+    useLocation()
+    cy.contains('.flag', 'Flash flood risk').should('be.visible')
+    cy.contains('.advisory-banner', '3.0 in forecast over the next 24 hours').should('be.visible')
+  })
 
   it('renders forecast values, units, and pressure trend', () => {
     stubForecast({ wind: 39, gust: 60, rain: 1.5 })

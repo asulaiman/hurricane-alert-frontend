@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { searchLocations, type GeocodingResult } from '../lib/openMeteo'
+import { searchLocations, type GeocodingResult } from '../lib/geocoding'
 
 export function LocationSearch({
   onSelect,

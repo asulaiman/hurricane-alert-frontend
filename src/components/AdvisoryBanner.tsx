@@ -1,4 +1,4 @@
-import type { Advisory } from '../lib/advisory'
+import type { Advisory } from '../lib/weather'
 
 export function AdvisoryBanner({ advisory }: { advisory: Advisory }) {
   return (
