@@ -1,0 +1,296 @@
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+body {
+  margin: 0;
+  background: #0b1a2b;
+  color: #e8edf2;
+}
+
+.app {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 2rem 1.25rem 3rem;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 1.75rem;
+}
+
+.tagline {
+  margin: 0.25rem 0 1.5rem;
+  color: #9fb3c8;
+}
+
+.location-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border-radius: 8px;
+  border: 1px solid #2c4a68;
+  background: #16283c;
+  color: #e8edf2;
+  padding: 0.6rem 1rem;
+}
+
+button:hover:not(:disabled) {
+  background: #1e3650;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.location-search form {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.location-search input {
+  font: inherit;
+  padding: 0.6rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #2c4a68;
+  background: #0f1f31;
+  color: #e8edf2;
+  min-width: 220px;
+}
+
+.search-results {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.search-results button {
+  width: 100%;
+  text-align: left;
+}
+
+.current-location {
+  color: #9fb3c8;
+  margin-bottom: 1.5rem;
+}
+
+.refresh-link {
+  margin-left: 0.75rem;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.85rem;
+}
+
+.error-text {
+  color: #ff8787;
+}
+
+.advisory-banner {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  border: 2px solid;
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+  background: #0f1f31;
+}
+
+.advisory-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  margin-top: 0.4rem;
+  flex-shrink: 0;
+}
+
+.advisory-banner h2 {
+  margin: 0 0 0.4rem;
+  font-size: 1.2rem;
+}
+
+.advisory-banner p {
+  margin: 0;
+  color: #cfdbe6;
+}
+
+.details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+}
+
+.detail-card {
+  background: #0f1f31;
+  border: 1px solid #1f3750;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+}
+
+.detail-card h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  color: #9fb3c8;
+}
+
+.detail-card dl {
+  margin: 0;
+}
+
+.detail-card dl div {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid #16283c;
+}
+
+.detail-card dl div:last-child {
+  border-bottom: none;
+}
+
+.detail-card dt {
+  color: #9fb3c8;
+}
+
+.detail-card dd {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+}
+
+.detail-time {
+  font-weight: 400;
+  color: #9fb3c8;
+  font-size: 0.85rem;
+}
+
+.flag {
+  display: inline-block;
+  margin-left: 0.5rem;
+  color: #ff8787;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+footer {
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #1f3750;
+  color: #7d93a8;
+  font-size: 0.85rem;
+}
+
+.official-alerts {
+  background: #1a1408;
+  border: 1px solid #4a3a10;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.official-alerts h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  color: #e8c468;
+}
+
+.official-alerts ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.official-alert-item {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.official-alert-source {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  background: #4a3a10;
+  color: #e8c468;
+  padding: 0.15rem 0.45rem;
+  border-radius: 6px;
+  margin-top: 0.2rem;
+}
+
+.official-alert-severity {
+  color: #9fb3c8;
+  font-size: 0.85rem;
+}
+
+.official-alert-item p {
+  margin: 0.25rem 0 0.35rem;
+  color: #cfdbe6;
+}
+
+.official-alert-item a {
+  color: #e8c468;
+  font-size: 0.85rem;
+}
+
+.alert-signup {
+  background: #0f1f31;
+  border: 1px solid #1f3750;
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.alert-signup h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.signup-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: #cfdbe6;
+}
+
+.signup-row input[type='email'] {
+  flex: 1;
+  font: inherit;
+  padding: 0.5rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid #2c4a68;
+  background: #16283c;
+  color: #e8edf2;
+}
+
+.consent-row {
+  font-size: 0.8rem;
+  color: #9fb3c8;
+}
+
+.alert-signup button {
+  align-self: flex-start;
+}
+
+.signup-success {
+  color: #2f9e44;
+  margin: 0;
+}
