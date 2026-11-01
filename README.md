@@ -31,10 +31,9 @@ renders that result rather than keeping its own thresholds or weather parser.
 Local TypeScript response interfaces describe the HTTP boundary, not a shared
 source package or a dependency on the backend checkout.
 
-The original extraction is on `asulaiman-extract-hurricane-api`, not merged into
-frontend `main`. That default branch still contains the old combined app.
-This cleanup does not merge or rewrite it; the split branch must be reviewed
-and integrated separately to remove those old copies from the default branch.
+The extraction and ownership cleanup are integrated into frontend `main`.
+The default branch contains only the frontend; backend routes, migrations,
+and scheduled checks live in the backend repository.
 
 ## Run locally
 
