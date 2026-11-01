@@ -31,7 +31,7 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           TEST_SERVICE: Frontend
           TEST_OUTCOME: ${{ steps.tests.outcome }}
-          TEST_CANCELLED: ${{ cancelled() }}
+          TEST_CANCELLED: 'false'
           TEST_REF: ${{ github.head_ref || github.ref }}
       - name: Upload Cypress failure screenshots
         if: ${{ failure() && !cancelled() }}
