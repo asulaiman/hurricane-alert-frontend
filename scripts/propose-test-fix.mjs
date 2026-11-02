@@ -109,13 +109,17 @@ export async function proposeTestFix(config, {
     if (current.state === 'completed') {
       const artifact = current.artifacts?.find((item) => item.provider === 'github' && item.type === 'pull')
       if (!Number.isSafeInteger(artifact?.data?.id)) {
-        await record(`Task: ${task.id}\nStatus: completed without a fix PR; human review required`)
-        throw new Error('Copilot completed without a PR; no placeholder or Slack success sent')
+        await sleep(30_000)
+        continue
       }
       const pulls = await api(`${prefix}/pulls?state=open&per_page=100`)
       const matches = pulls.filter((pull) => artifact.data.global_id
         ? pull.node_id === artifact.data.global_id
-        : pull.id === artifact.data.id || pull.number === artifact.data.id)
+        : pull.id === artifact.data.id)
+      if (matches.length === 0) {
+        await sleep(30_000)
+        continue
+      }
       if (matches.length !== 1) {
         await record(`Task: ${task.id}\nStatus: cannot uniquely resolve task PR; human review required`)
         throw new Error('Cannot uniquely resolve task PR')
@@ -123,11 +127,23 @@ export async function proposeTestFix(config, {
       const pr = await api(`${prefix}/pulls/${matches[0].number}`)
       if (pr.state !== 'open' || pr.base?.repo?.full_name !== repository ||
           pr.base.ref !== repo.default_branch || pr.head?.repo?.full_name !== repository ||
-          pr.head.ref === repo.default_branch || pr.changed_files < 1 ||
-          pr.user?.login !== 'copilot-swe-agent[bot]' || !pr.body?.includes(run.html_url) ||
-          !pr.html_url?.startsWith(`https://github.com/${repository}/pull/`)) {
+          !pr.head.ref || pr.head.ref === repo.default_branch ||
+          pr.user?.login !== 'Copilot' || pr.user.id !== 198982749 || pr.user.type !== 'Bot' ||
+          pr.id !== artifact.data.id || pr.number !== matches[0].number ||
+          pr.html_url !== `https://github.com/${repository}/pull/${pr.number}`) {
         await record(`Task: ${task.id}\nStatus: PR verification failed; human review required`)
         throw new Error('Agent PR did not satisfy fix proposal requirements; no Slack alert sent')
+      }
+      if (!Number.isSafeInteger(pr.changed_files) || pr.changed_files < 1) {
+        await sleep(30_000)
+        continue
+      }
+      // The task artifact, not model-written prose, binds this PR to the failed run.
+      if (!pr.body?.includes(run.html_url)) {
+        await api(`${prefix}/issues/${pr.number}/comments`, {
+          method: 'POST',
+          body: { body: `Automatic fix proposal for failed run: ${run.html_url}\nTracking issue: #${issue.number}\nCopilot task: ${task.id}` },
+        })
       }
       // Mark before external delivery: a timeout is uncertain, not permission to send twice.
       await record(`Task: ${task.id}\nPR: ${pr.html_url}\nStatus: Slack delivery attempted; inspect channel before any manual retry`)
@@ -137,8 +153,13 @@ export async function proposeTestFix(config, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             text: `${service} fix PR proposed: ${pr.html_url}\nFailed run: ${run.html_url}`,
-            blocks: [{ type: 'section', text: { type: 'plain_text',
-              text: `${service} fix PR proposed\nRepository: ${repository}\nPR: ${pr.html_url}\nFailed run: ${run.html_url}` } }],
+            blocks: [
+              { type: 'section', text: { type: 'plain_text',
+                text: `${service} fix PR proposed\nRepository: ${repository}\nPR: ${pr.html_url}\nFailed run: ${run.html_url}` } },
+              { type: 'actions', elements: [
+                { type: 'button', text: { type: 'plain_text', text: 'Review fix PR' }, url: pr.html_url },
+              ] },
+            ],
           }),
           signal: AbortSignal.timeout(10_000),
         })

@@ -14,6 +14,7 @@ const config = {
 }
 function harness(overrides = {}) {
   const calls = []
+  let polls = 0
   const run = {
     id: 10, path: config.workflowPath, event: 'push', conclusion: 'failure', status: 'completed',
     head_branch: 'main', head_sha: 'abc123', head_repository: { full_name: repo },
@@ -40,15 +41,24 @@ function harness(overrides = {}) {
       if (overrides.startFailure) return new Response('Do not expose provider details', { status: 403 })
       return Response.json({ id: 'task-1' })
     }
-    if (path.endsWith('/tasks/task-1')) return Response.json({
+    if (path.endsWith('/tasks/task-1')) {
+      polls += 1
+      return Response.json({
       state: overrides.state ?? 'completed',
-      artifacts: overrides.noPr ? [] : [{ provider: 'github', type: 'pull', data: { id: 300 } }],
-    })
-    if (path.endsWith('/pulls')) return Response.json([{ id: 300, number: 3 }])
+      artifacts: overrides.noPr || (overrides.delayedArtifact && polls === 1)
+        ? [] : [{ provider: 'github', type: 'pull', data: { id: 300, global_id: '' } }],
+      })
+    }
+    if (path.endsWith('/pulls')) return Response.json(
+      overrides.delayedDiscovery && polls === 1 ? [] : [{ id: 300, number: 3 }],
+    )
+    if (path.endsWith('/issues/3/comments')) return Response.json({ id: 1 })
     if (path.endsWith('/pulls/3')) return Response.json({
+      id: 300, number: 3,
       state: 'open', base: { ref: 'main', repo: { full_name: repo } },
       head: { ref: 'copilot/fix', repo: { full_name: repo } },
-      user: { login: 'copilot-swe-agent[bot]' }, changed_files: overrides.emptyPr ? 0 : 1,
+      user: { login: 'Copilot', id: 198982749, type: 'Bot' },
+      changed_files: overrides.emptyPr || (overrides.delayedDiff && polls === 1) ? 0 : 1,
       html_url: prUrl, body: `Evidence and validation for ${runUrl}`,
       ...overrides.pr,
     })
@@ -69,6 +79,7 @@ test('creates one task, verifies a real PR, then sends one link', async () => {
   const slack = h.calls.filter((call) => call.url.startsWith('https://hooks.slack.com/'))
   assert.equal(slack.length, 1)
   assert.ok(JSON.parse(slack[0].options.body).text.includes(prUrl))
+  assert.equal(JSON.parse(slack[0].options.body).blocks[1].elements[0].url, prUrl)
   assert.ok(h.calls.findIndex((call) => call.url.endsWith('/pulls/3')) < h.calls.indexOf(slack[0]))
 })
 for (const [name, overrides] of [
@@ -98,7 +109,8 @@ for (const [name, overrides] of [
   ['empty PR', { emptyPr: true }],
   ['wrong PR author', { pr: { user: { login: 'other-user' } } }],
   ['wrong base', { pr: { base: { ref: 'other', repo: { full_name: repo } } } }],
-  ['missing run evidence', { pr: { body: 'No failed run link' } }],
+  ['spoofed Copilot', { pr: { user: { login: 'Copilot', id: 1, type: 'Bot' } } }],
+  ['wrong artifact identity', { pr: { id: 999 } }],
 ]) {
   test(`${name} fails explicitly without a PR alert`, async () => {
     const h = harness(overrides)
@@ -130,3 +142,21 @@ test('invalid webhook never starts a paid task or exposes its value', async () =
   })
   assert.ok(!h.calls.some((call) => call.url.includes('/tasks')))
 })
+test('real Copilot author and missing model-written run link still produce an attributable alert', async () => {
+  const h = harness({ pr: { body: 'Restore empty-search Cypress expectation' } })
+  assert.deepEqual(await proposeTestFix(config, h), { pr: prUrl })
+  const comment = h.calls.findIndex((call) => call.url.endsWith('/issues/3/comments'))
+  const slack = h.calls.findIndex((call) => call.url.includes('hooks.slack.com'))
+  assert.ok(comment >= 0 && comment < slack)
+  assert.ok(JSON.parse(h.calls[comment].options.body).body.includes(runUrl))
+})
+for (const delay of ['delayedArtifact', 'delayedDiscovery', 'delayedDiff']) {
+  test(`waits for ${delay} without another paid task or duplicate alert`, async () => {
+    const h = harness({ [delay]: true })
+    h.maxPolls = 2
+    assert.deepEqual(await proposeTestFix(config, h), { pr: prUrl })
+    assert.equal(h.calls.filter((call) => call.url.endsWith('/tasks')).length, 1)
+    assert.equal(h.calls.filter((call) => call.url.endsWith('/tasks/task-1')).length, 2)
+    assert.equal(h.calls.filter((call) => call.url.includes('hooks.slack.com')).length, 1)
+  })
+}

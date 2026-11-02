@@ -129,9 +129,15 @@ Concurrent runs and retries do not create another attempt for that commit.
 Copilot must reproduce the failure, propose a minimal fix on another branch,
 retain test coverage, link the run, and explain validation. No auto-merge is
 performed. After task completion, the workflow verifies an open, non-empty
-Copilot PR with the correct repo/base and failed-run link before sending one
+Copilot PR with the correct repo/base and exact task artifact ID before sending one
 additional Slack message with its PR URL. Existing immediate failure alerts
 are retained separately.
+
+The verifier checks GitHub's Copilot bot identity, not a guessed agent login.
+If the agent omits the failed-run URL from its PR body, the workflow adds a
+provenance comment containing that URL and the tracking issue/task IDs.
+Completed tasks may expose their PR artifact or changes with a delay; these
+are polled within the same bounded attempt, never by starting another task.
 
 Observation is bounded to 45 minutes with no automatic task or Slack POST
 retry. Timeout, missing/empty PR, permission errors, or uncertain delivery
