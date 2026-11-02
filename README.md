@@ -96,6 +96,53 @@ the workflow uses no `pull_request_target` or elevated permissions.
 `npm run test:notifications` validates failure, success, cancellation, safe
 metadata encoding, and notification errors without sending Slack messages.
 
+## Automatic fix proposals
+
+The proposed `propose-test-fix.yml` workflow uses the Copilot cloud agent
+[agent tasks API](https://docs.github.com/en/rest/agent-tasks/agent-tasks).
+It is **not enabled until published on the default branch and configured**.
+The API is a public preview; starting tasks currently requires Copilot
+Business or Enterprise eligibility for the token's user.
+
+An administrator should create an expiring **fine-grained personal access
+token**, resource owner `asulaiman`, limited to these two selected repositories:
+`hurricane-alert-frontend` and `hurricane-alert-backend`. Grant only repository
+**Agent tasks: read and write** (metadata read is implicit). Store the token
+directly as the Actions secret `COPILOT_AGENT_TOKEN` in both repositories.
+Never paste its value into chat, source, logs, or an issue. Do not reuse the
+desktop session token. GitHub App installation tokens and Actions'
+`GITHUB_TOKEN` cannot start these tasks. The workflow's separate ephemeral
+`GITHUB_TOKEN` has contents/actions/PR read and issues write solely for
+inspection and durable attempt records. Keep `SLACK_WEBHOOK_URL` configured.
+Enable Copilot cloud agent for both repos and ensure the token owner has
+write access and an eligible subscription. Rotate the token before expiry.
+
+Only a failed **test step** from a trusted user's default-branch push is
+eligible. Fork/PR, bot, simulation, fix-branch, stale-commit, successful, and
+cancelled runs are excluded. The handler checks out only the default branch,
+never failed-run code/artifacts, and sends a fixed investigation prompt with
+the failed-run URL rather than interpolating logs as instructions.
+
+One tracking issue reserves each failed commit before one paid agent task is
+started. This issue is bookkeeping, not a substitute for a code fix PR.
+Concurrent runs and retries do not create another attempt for that commit.
+Copilot must reproduce the failure, propose a minimal fix on another branch,
+retain test coverage, link the run, and explain validation. No auto-merge is
+performed. After task completion, the workflow verifies an open, non-empty
+Copilot PR with the correct repo/base and failed-run link before sending one
+additional Slack message with its PR URL. Existing immediate failure alerts
+are retained separately.
+
+Observation is bounded to 45 minutes with no automatic task or Slack POST
+retry. Timeout, missing/empty PR, permission errors, or uncertain delivery
+fail explicitly and leave the tracking issue for human investigation; the
+agent may continue after observation times out. Inspect the task/issue/channel
+before any manual retry. This bounds attempts, not the provider's AI billing;
+manage plan budgets separately. PR correctness still requires human review.
+`npm run test:notifications` exercises this orchestration with mocked APIs,
+including fork/loop/deduplication guards and no-real-message failure paths.
+Live agent execution is not validated without the configured token/eligibility.
+
 ## Compliance notes (read before public launch)
 
 This implements the mechanical basics — explicit consent capture with a
