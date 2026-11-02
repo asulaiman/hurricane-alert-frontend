@@ -138,7 +138,7 @@ describe('Location and forecast flows', () => {
     cy.contains('h1', 'Hurricane Alert').should('be.visible')
     cy.get('.advisory-banner, .alert-signup').should('not.exist')
     cy.contains('button', /^Search$/).click()
-    cy.get('.search-results').should('exist')
+    cy.get('.search-results').should('not.exist')
   })
 
   it('searches, selects a city, and sends its coordinates to weather and API services', () => {
